@@ -31,12 +31,25 @@
 #include "TLDUtil.h"
 #include "Trajectory.h"
 
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+namespace io = boost::asio;
+namespace sys = boost::system;
+namespace ip = boost::asio::ip;
+using boost::asio::ip::tcp;
+
 using namespace tld;
 using namespace cv;
 
+void socketAccept(const sys::error_code &error, bool *flag)
+{
+    *flag = true;
+    printf("Accepting connection!\n");
+}
+
 void Main::doWork()
 {
-	Trajectory trajectory;
+    Trajectory trajectory;
     IplImage *img = imAcqGetImg(imAcq);
     Mat grey(img->height, img->width, CV_8UC1);
     cvtColor(cvarrToMat(img), grey, CV_BGR2GRAY);
@@ -83,6 +96,16 @@ void Main::doWork()
         }
     }
 
+    io::io_service io;
+
+    tcp::endpoint ep(ip::address::from_string("127.0.0.1"), 9001);
+    tcp::acceptor acc(io, ep);
+    tcp::socket socket(io);
+
+    bool sendResults = false;
+    acc.async_accept(socket, boost::bind(socketAccept,
+        io::placeholders::error, &sendResults));
+
     bool reuseFrameOnce = false;
     bool skipProcessingOnce = false;
 
@@ -104,6 +127,7 @@ void Main::doWork()
 
     while(imAcqHasMoreFrames(imAcq))
     {
+        io.poll();
         double tic = cvGetTickCount();
 
         if(!reuseFrameOnce)
@@ -138,6 +162,17 @@ void Main::doWork()
             else
             {
                 fprintf(resultsFile, "%d NaN NaN NaN NaN NaN\n", imAcq->currentFrame - 1);
+            }
+        }
+
+        if(sendResults)
+        {
+            if(tld->currBB != NULL)
+            {
+                int data[4] = {tld->currBB->x, tld->currBB->y, tld->currBB->width, tld->currBB->height};
+                char const* d = reinterpret_cast<char const*>(data);
+                std::string str(d, d + sizeof data);
+                io::write(socket, io::buffer(str));
             }
         }
 
@@ -298,4 +333,7 @@ void Main::doWork()
     {
         fclose(resultsFile);
     }
+
+    io.stop();
+    socket.close();
 }
