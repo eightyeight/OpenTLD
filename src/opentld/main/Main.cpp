@@ -167,9 +167,14 @@ void Main::doWork()
 
         if(sendResults)
         {
+            int data[5] = {0, 0, 0, 0, 0};
             if(tld->currBB != NULL)
             {
-                int data[4] = {tld->currBB->x, tld->currBB->y, tld->currBB->width, tld->currBB->height};
+                data[0] = 1;
+                data[1] = tld->currBB->x;
+                data[2] = tld->currBB->y;
+                data[3] = tld->currBB->width;
+                data[4] = tld->currBB->height;
                 char const* d = reinterpret_cast<char const*>(data);
                 std::string str(d, d + sizeof data);
                 io::write(socket, io::buffer(str));
