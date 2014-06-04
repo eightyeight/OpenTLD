@@ -175,10 +175,10 @@ void Main::doWork()
                 data[2] = tld->currBB->y;
                 data[3] = tld->currBB->width;
                 data[4] = tld->currBB->height;
-                char const* d = reinterpret_cast<char const*>(data);
-                std::string str(d, d + sizeof data);
-                io::write(socket, io::buffer(str));
             }
+            char const* d = reinterpret_cast<char const*>(data);
+            std::string str(d, d + sizeof data);
+            io::write(socket, io::buffer(str));
         }
 
         double toc = (cvGetTickCount() - tic) / cvGetTickFrequency();
